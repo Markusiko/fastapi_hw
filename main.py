@@ -1,9 +1,8 @@
 from enum import Enum
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 import time
-# from fastapi.encoders import jsonable_encoder
 
 app = FastAPI()
 
@@ -66,17 +65,34 @@ def create_dog(new_dog: Dog) -> Dog:
     new_pk = max(dogs_db.keys()) + 1
     new_dog.pk = new_pk
     dogs_db[new_pk] = new_dog
+
+    # добавляем отметку во времени
+    new_timestamp = Timestamp(id=max([timestamp.id for timestamp in post_db]) + 1,
+                              timestamp=time.time_ns())
+    post_db.append(new_timestamp)
+
     return new_dog
 
 
+# если делаем запрос по ключу, то такой ключ должен быть
+# добавляем дополнительные проверки
 @app.get('/dog/{pk}')
 def get_dog_by_pk(pk: int) -> Dog:
+    if pk not in dogs_db:
+        raise HTTPException(status_code=404, detail="No dog with such primary key :(")
+
     return dogs_db[pk]
 
 
 @app.patch('/dog/{pk}')
 def update_dog(pk: int, dog: Dog) -> Dog:
-    # old_dog = dogs_db[pk]
+    if pk not in dogs_db:
+        raise HTTPException(status_code=404, detail="No dog with such primary key :(")
     dogs_db[pk] = dog
-    return dog
 
+    # добавляем отметку во времени
+    new_timestamp = Timestamp(id=max([timestamp.id for timestamp in post_db]) + 1,
+                              timestamp=time.time_ns())
+    post_db.append(new_timestamp)
+
+    return dog
